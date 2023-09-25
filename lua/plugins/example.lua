@@ -2,7 +2,12 @@
 -- stylua: ignore
 if true then return {
   {'akinsho/toggleterm.nvim', version = "*", config = true},
-
+  {
+    "iamcco/markdown-preview.nvim",
+    config = function()
+      vim.fn["mkdp#util#install"]()
+    end,
+  },
 } end
 
 -- every spec file under the "plugins" directory will be loaded automatically by lazy.nvim
