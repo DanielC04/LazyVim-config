@@ -22,9 +22,13 @@ end
 
 -- exit insert/Terminal mode quicker
 map("i", "jk", "<escape>", { desc = "exit insert mode" })
+map("v", "jk", "<escape>", { desc = "exit insert mode" })
 map("t", "jk", "<C-\\><C-N>", { desc = "exit terminal mode" })
 
 -- make resizing windows smoother
 map("n", "<C-Up>", "<cmd>resize +2<cr>", { desc = "Increase window height" })
 map("t", "<C-Up>", "<cmd>resize +2<cr>", { desc = "Increase window height" })
 map("t", "<C-Down>", "<cmd>resize -2<cr>", { desc = "Decrease window height" })
+
+-- toggle zenmode
+map("n", "zn", "<cmd>ZenMode<cr>", { desc = "Toggle zenmode" })
