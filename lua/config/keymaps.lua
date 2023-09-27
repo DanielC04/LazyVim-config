@@ -33,3 +33,12 @@ map("t", "<C-Down>", "<cmd>resize -2<cr>", { desc = "Decrease window height" })
 
 -- toggle zenmode
 map("n", "zn", "<cmd>ZenMode<cr>", { desc = "Toggle zenmode" })
+
+-- enable gf on links in obsidian
+vim.keymap.set("n", "gf", function()
+  if require("obsidian").util.cursor_on_markdown_link() then
+    return "<cmd>ObsidianFollowLink<CR>"
+  else
+    return "gf"
+  end
+end, { noremap = false, expr = true })
