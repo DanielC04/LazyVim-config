@@ -23,6 +23,7 @@ end
 -- exit insert/Terminal mode quicker
 map("i", "jk", "<escape>", { desc = "exit insert mode" })
 map("v", "jk", "<escape>", { desc = "exit insert mode" })
+map("t", "jk", "<escape>", { desc = "exit insert mode" })
 map("t", "jk", "<C-\\><C-N>", { desc = "exit terminal mode" })
 
 -- make resizing windows smoother
