@@ -6,6 +6,10 @@
 -- This file is automatically loaded by lazyvim.config.init
 local Util = require("lazyvim.util")
 
+-- set mapleader and localleader
+vim.g.mapleader = " "
+vim.g.maplocalleader = ","
+
 local function map(mode, lhs, rhs, opts)
   local keys = require("lazy.core.handler").handlers.keys
   ---@cast keys LazyKeysHandler
