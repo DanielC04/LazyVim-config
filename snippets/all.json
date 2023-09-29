@@ -1,0 +1,9 @@
+{
+  "DumbTest": {
+    "prefix": "tst",
+    "body": [
+      "This is a test!!!"
+    ],
+    "desciption": "see if this shit works!"
+  }
+}
