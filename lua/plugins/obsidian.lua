@@ -15,7 +15,7 @@ return {
     -- see below for full list of optional dependencies 👇
   },
   opts = {
-    dir = "/media/daniel/Documents/Obsidian/", -- no need to call 'vim.fn.expand' here
+    dir = "/documents/Notes", -- no need to call 'vim.fn.expand' here
     mappings = {},
     daily_notes = {
       -- Optional, if you keep daily notes in a separate directory.
