@@ -35,6 +35,9 @@ map("n", "<C-Up>", "<cmd>resize +2<cr>", { desc = "Increase window height" })
 map("t", "<C-Up>", "<cmd>resize +2<cr>", { desc = "Increase window height" })
 map("t", "<C-Down>", "<cmd>resize -2<cr>", { desc = "Decrease window height" })
 
+-- make switching out of terminal easier
+map("t", "<leader>ww", "<escape><leader>ww")
+
 -- toggle zenmode
 map("n", "zn", "<cmd>ZenMode<cr>", { desc = "Toggle zenmode" })
 

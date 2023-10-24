@@ -5,13 +5,12 @@ return {
   event = {
     -- If you want to use the home shortcut '~' here you need to call 'vim.fn.expand'.
     -- E.g. "BufReadPre " .. vim.fn.expand "~" .. "/my-vault/**.md"
-    "BufReadPre /media/daniel/Documents/Obsidian/**.md",
-    "BufNewFile /media/daniel/Documents/Obsidian/**.md",
+    "BufReadPre /documents/Notes/**.md",
+    "BufNewFile /documents/Notes/**.md",
   },
   dependencies = {
     -- Required.
     "nvim-lua/plenary.nvim",
-
     -- see below for full list of optional dependencies 👇
   },
   opts = {
@@ -23,7 +22,7 @@ return {
       -- Optional, if you want to change the date format for the ID of daily notes.
       date_format = "%d-%m-%Y",
       -- Optional, if you want to change the date format of the default alias of daily notes.
-      alias_format = "%A,  %d %B %Y",
+      alias_format = "%A, %d %B %Y",
       -- Optional, if you want to automatically insert a template from your template directory like 'daily.md'
       template = "daily-note.md",
     },
