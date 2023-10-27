@@ -41,6 +41,12 @@ map("t", "<leader>ww", "<escape><leader>ww")
 -- toggle zenmode
 map("n", "zn", "<cmd>ZenMode<cr>", { desc = "Toggle zenmode" })
 
+-- latex: make rightarrow
+vim.cmd("abb ra $\\rightarrow$")
+
+-- make clipboard work automatically with + register
+vim.cmd.set("clipboard+=unnamedplus")
+
 -- enable gf on links in obsidian
 vim.keymap.set("n", "gf", function()
   if require("obsidian").util.cursor_on_markdown_link() then
