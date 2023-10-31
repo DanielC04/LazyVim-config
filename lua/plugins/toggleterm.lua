@@ -4,11 +4,31 @@ return {
     config = true,
     cmd = "ToggleTerm",
     keys = {
-      { "<leader>kk", "<cmd>ToggleTerm direction<cr>", desc = "Toggle terminal in previously used orientation" },
-      { "<leader>kkh", "<cmd>ToggleTerm direction=horizontal<cr>", desc = "Toggle horizontal terminal" },
-      { "<leader>kkt", "<cmd>ToggleTerm direction=tab<cr>", desc = "Toggle terminal in new tab" },
-      { "<leader>kkv", "<cmd>ToggleTerm direction=vertical size=40<cr>", desc = "Toggle vertical terminal" },
-      { "<leader>kkf", "<cmd>ToggleTerm direction=float<cr>", desc = "Toggle floating terminal" },
+      {
+        "<leader>kk",
+        "<cmd>ToggleTerm direction<cr><cmd>setlocal nospell<cr>",
+        desc = "Toggle terminal in previously used orientation",
+      },
+      {
+        "<leader>kkh",
+        "<cmd>ToggleTerm direction=horizontal<cr><cmd>setlocal nospell<cr>",
+        desc = "Toggle horizontal terminal",
+      },
+      {
+        "<leader>kkt",
+        "<cmd>ToggleTerm direction=tab<cr><cmd>setlocal nospell<cr>",
+        desc = "Toggle terminal in new tab",
+      },
+      {
+        "<leader>kkv",
+        "<cmd>ToggleTerm direction=vertical size=40<cr><cmd>setlocal nospell<cr>",
+        desc = "Toggle vertical terminal",
+      },
+      {
+        "<leader>kkf",
+        "<cmd>ToggleTerm direction=float<cr><cmd>setlocal nospell<cr>",
+        desc = "Toggle floating terminal",
+      },
     },
     --     opts = {
     --       open_mapping = [[<leader>kk]],

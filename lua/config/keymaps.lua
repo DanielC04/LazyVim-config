@@ -29,6 +29,7 @@ map("i", "jk", "<escape>", { desc = "exit insert mode" })
 map("v", "jk", "<escape>", { desc = "exit insert mode" })
 map("t", "jk", "<escape>", { desc = "exit insert mode" })
 map("t", "jk", "<C-\\><C-N>", { desc = "exit terminal mode" })
+map("t", "jk<C-j>", "<cmd>ToggleTerm direction<cr>", { desc = "toggle terminal from terminal mode" })
 
 -- make resizing windows smoother
 map("n", "<C-Up>", "<cmd>resize +2<cr>", { desc = "Increase window height" })
@@ -43,9 +44,23 @@ map("n", "zn", "<cmd>ZenMode<cr>", { desc = "Toggle zenmode" })
 
 -- latex: make rightarrow
 vim.cmd("abb ra $\\rightarrow$")
+-- latex: surround selection with mathmode
+map("v", "<C-m>", "c$$<esc>hp", { desc = "surround selection with math-mode $" })
+map("n", "<C-m>", "i$<esc>yllp", { desc = "surround char under cursor with math-mode $" })
+map("i", "<C-m>", "$<esc>li$", { desc = "surround char under cursor with math-mode$" })
 
 -- make clipboard work automatically with + register
-vim.cmd.set("clipboard+=unnamedplus")
+-- vim.cmd.set("clipboard+=unnamedplus")
+map("n", "<leader>y", '"*y')
+map("v", "<leader>y", '"*y')
+map("n", "<leader>p", '"*p')
+
+-- insert emojis in insert mode
+map("i", "<localleader>e", "<cmd>IconPickerInsert<cr>")
+
+-- switch spell checked language
+map("n", "<leader>spelld", "<cmd>set spell spelllang=de_de<cr>", { desc = "set spell checked language to german" })
+map("n", "<leader>spelle", "<cmd>set spell spelllang=en_us<cr>", { desc = "set spell checked language to english" })
 
 -- enable gf on links in obsidian
 vim.keymap.set("n", "gf", function()
