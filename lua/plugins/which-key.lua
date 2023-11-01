@@ -4,6 +4,7 @@ return {
   opts = {
     defaults = {
       ["<localLeader>l"] = { name = "+vimtex" },
+      ["<leader>d"] = { name = "+debug" },
     },
   },
 }
