@@ -1,66 +1,59 @@
 -- Keymaps are automatically loaded on the VeryLazy event
 -- Default keymaps that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/keymaps.lua
 -- Add any additional keymaps here
---
-
--- This file is automatically loaded by lazyvim.config.init
-local Util = require("lazyvim.util")
 
 -- set mapleader and localleader
 vim.g.mapleader = " "
 vim.g.maplocalleader = ","
 
-local function map(mode, lhs, rhs, opts)
-  local keys = require("lazy.core.handler").handlers.keys
-  ---@cast keys LazyKeysHandler
-  -- do not create the keymap if a lazy keys handler exists
-  if not keys.active[keys.parse({ lhs, mode = mode }).id] then
-    opts = opts or {}
-    opts.silent = opts.silent ~= false
-    if opts.remap and not vim.g.vscode then
-      opts.remap = nil
-    end
-    vim.keymap.set(mode, lhs, rhs, opts)
+-- exit insert/visual mobe using jk instead of <escape>
+vim.keymap.set("i", "jk", "<escape>", { desc = "exit insert mode" })
+vim.keymap.set("v", "jk", "<escape>", { desc = "exit insert mode" })
+vim.keymap.set("t", "jk", "<C-\\><C-N>", { desc = "exit insert mode" })
+
+-- open terminal in bottom buffer
+vim.keymap.set("n", "<leader>t", function()
+  if vim.bo.buftype ~= "terminal" then
+    vim.cmd("bo terminal")
+    vim.cmd("horizontal resize 10")
+  else
+    vim.cmd("vsplit")
+    vim.cmd("terminal")
   end
-end
-
--- exit insert/Terminal mode quicker
-map("i", "jk", "<escape>", { desc = "exit insert mode" })
-map("v", "jk", "<escape>", { desc = "exit insert mode" })
-map("t", "jk", "<escape>", { desc = "exit insert mode" })
-map("t", "jk", "<C-\\><C-N>", { desc = "exit terminal mode" })
-map("t", "jk<C-j>", "<cmd>ToggleTerm direction<cr>", { desc = "toggle terminal from terminal mode" })
-
--- make resizing windows smoother
-map("n", "<C-Up>", "<cmd>resize +2<cr>", { desc = "Increase window height" })
-map("t", "<C-Up>", "<cmd>resize +2<cr>", { desc = "Increase window height" })
-map("t", "<C-Down>", "<cmd>resize -2<cr>", { desc = "Decrease window height" })
-
--- make switching out of terminal easier
-map("t", "<leader>ww", "<escape><leader>ww")
-
--- toggle zenmode
-map("n", "zn", "<cmd>ZenMode<cr>", { desc = "Toggle zenmode" })
+  vim.cmd("startinsert")
+end, { desc = "open terminal at bottom" })
 
 -- latex: make rightarrow
 vim.cmd("abb ra $\\rightarrow$")
--- latex: surround selection with mathmode
-map("v", "<C-m>", "c$$<esc>hp", { desc = "surround selection with math-mode $" })
-map("n", "<C-m>", "i$<esc>yllp", { desc = "surround char under cursor with math-mode $" })
-map("i", "<C-m>", "$<esc>li$", { desc = "surround char under cursor with math-mode$" })
 
--- make clipboard work automatically with + register
--- vim.cmd.set("clipboard+=unnamedplus")
-map("n", "<leader>y", '"*y')
-map("v", "<leader>y", '"*y')
-map("n", "<leader>p", '"*p')
-
--- insert emojis in insert mode
-map("i", "<localleader>e", "<cmd>IconPickerInsert<cr>")
+-- make resizing windows smoother
+vim.keymap.set("n", "<C-Up>", "<cmd>resize +2<cr>", { desc = "Increase window height" })
+vim.keymap.set("t", "<C-Up>", "<cmd>resize +2<cr>", { desc = "Increase window height" })
+vim.keymap.set("t", "<C-Down>", "<cmd>resize -2<cr>", { desc = "Decrease window height" })
 
 -- switch spell checked language
-map("n", "<leader>spelld", "<cmd>set spell spelllang=de_de<cr>", { desc = "set spell checked language to german" })
-map("n", "<leader>spelle", "<cmd>set spell spelllang=en_us<cr>", { desc = "set spell checked language to english" })
+vim.keymap.set(
+  "n",
+  "<leader>spd",
+  "<cmd>set spell spelllang=de_de<cr>",
+  { desc = "set spell checked language to german" }
+)
+vim.keymap.set(
+  "n",
+  "<leader>spe",
+  "<cmd>set spell spelllang=en_us<cr>",
+  { desc = "set spell checked language to english" }
+)
+-- default language: german
+vim.cmd("set spell spelllang=de_de | setlocal nospell ")
+
+-- make switching tabs more comfortable on german keyboards
+vim.keymap.set("n", "<leader><tab>$", "<cmd>tablast<cr>", { desc = "Last Tab" })
+vim.keymap.set("n", "<leader><tab>0", "<cmd>tabfirst<cr>", { desc = "First Tab" })
+vim.keymap.set("n", "<leader><tab><tab", "<cmd>tabnew<cr>", { desc = "Next Tab" })
+vim.keymap.set("n", "<leader><tab>d", "<cmd>tabclose<cr>", { desc = "Close Tab" })
+vim.keymap.set("n", "<leader><tab>l", "<cmd>tabnext<cr>", { desc = "New Tab" })
+vim.keymap.set("n", "<leader><tab>h", "<cmd>tabprevious<cr>", { desc = "Previous Tab" })
 
 -- enable gf on links in obsidian
 vim.keymap.set("n", "gf", function()
@@ -70,3 +63,6 @@ vim.keymap.set("n", "gf", function()
     return "gf"
   end
 end, { noremap = false, expr = true })
+
+-- Obsidian insert definition
+vim.cmd("abb odef >[!Definition] <CR>>")
