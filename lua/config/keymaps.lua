@@ -64,5 +64,5 @@ end, { noremap = false, expr = true })
 -- Obsidian insert definition
 vim.cmd("abb odef >[!Definition] <CR>>")
 
--- insert blank line below on control enter
-vim.keymap.set("n", "<C-M>", "<cmd> append <Enter> <CR>", { desc = "insert blank line below" })
+-- disable mouse
+vim.cmd("set mouse=")
