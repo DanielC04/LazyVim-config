@@ -52,17 +52,15 @@ vim.cmd("set spell spelllang=de_de | setlocal nospell ")
 -- latex: make rightarrow
 vim.cmd("abb ra $\\rightarrow$")
 
--- enable gf on links in obsidian
-vim.keymap.set("n", "gf", function()
-  if require("obsidian").util.cursor_on_markdown_link() then
-    return "<cmd>ObsidianFollowLink<CR>"
-  else
-    return "gf"
-  end
-end, { noremap = false, expr = true })
-
 -- Obsidian insert definition
 vim.cmd("abb odef >[!Definition] <CR>>")
+-- Obsidian: generate learning cards
+vim.keymap.set(
+  "n",
+  "<leader>ga",
+  "<cmd>!python3 /documents/Notes/obsidian_to_anki/obsidian_to_anki.py /documents/Notes/<cr>",
+  { desc = "generate ani keycards from obsidian notes" }
+)
 
 -- disable mouse
 vim.cmd("set mouse=")
