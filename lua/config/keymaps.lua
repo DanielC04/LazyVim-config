@@ -58,9 +58,14 @@ vim.cmd("abb odef >[!Definition] <CR>>")
 vim.keymap.set(
   "n",
   "<leader>ga",
-  "<cmd>!python3 /documents/Notes/obsidian_to_anki/obsidian_to_anki.py /documents/Notes/<cr>",
+  "<cmd>!python3 /documents/Notes/obsidian_to_anki/main.py<cr>",
   { desc = "generate ani keycards from obsidian notes" }
 )
 
 -- disable mouse
 vim.cmd("set mouse=")
+
+-- template to create a node
+vim.cmd('abb begincard <!-- card type="Basic" deck="Uni::Semester1::Mathe" tags="uni" -->')
+vim.cmd("abb endcard <!-- card -->")
+vim.cmd("abb turncard <!-- back -->")
