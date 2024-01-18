@@ -54,6 +54,14 @@ vim.cmd("abb ra $\\rightarrow$")
 
 -- Obsidian insert definition
 vim.cmd("abb odef >[!Definition] <CR>>")
+-- Obsidian follow link
+vim.keymap.set("n", "gf", function()
+  if require("obsidian").util.cursor_on_markdown_link() then
+    return "<cmd>ObsidianFollowLink<CR>"
+  else
+    return "gf"
+  end
+end, { noremap = false, expr = true })
 -- Obsidian: generate learning cards
 vim.keymap.set(
   "n",
