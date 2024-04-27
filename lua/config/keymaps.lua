@@ -6,7 +6,6 @@
 
 -- set mapleader and localleader
 vim.g.mapleader = " "
-vim.g.maplocalleader = ","
 
 -- source neovim config to avoid having to restart neovim everytime I change somehting
 vim.keymap.set("n", "<leader>sv", "<cmd>luafile %<cr>", { desc = "source neovim config" })
@@ -76,6 +75,6 @@ vim.keymap.set(
 vim.cmd("set mouse=")
 
 -- template to create a node
-vim.cmd('abb begincard <!-- card type="Basic" deck="Uni::Semester1::Mathe" tags="uni" -->')
+vim.cmd('abb begincard <!-- card type="Basic" deck="Uni::Semester1::Wirtschaft" tags="uni" -->')
 vim.cmd("abb endcard <!-- card -->")
 vim.cmd("abb turncard <!-- back -->")
