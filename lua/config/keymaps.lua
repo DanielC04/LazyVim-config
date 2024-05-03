@@ -48,8 +48,6 @@ vim.keymap.set(
 -- default language: german
 vim.cmd("set spell spelllang=de_de | setlocal nospell ")
 
--- latex: make rightarrow
-vim.cmd("abb ra \\rightarrow")
 -- latex: insert real number symbol
 vim.cmd("abb reals \\mathbb{R}")
 
