@@ -78,8 +78,11 @@ vim.cmd("abb endcard <!-- card -->")
 vim.cmd("abb turncard <!-- back -->")
 
 -- my latex keymaps
-vim.keymap.set("i", "lmm<leader>", "$$<escape>i", { desc = "insert math mode" })
+vim.keymap.set("i", "mm<leader>", "$$<escape>i", { desc = "insert math mode" })
+vim.keymap.set("i", "dmm<leader>", "$$  $$<escape>hhi", { desc = "insert math mode" })
 vim.keymap.set("i", "nl<leader>", "\\\\<cr>", { desc = "insert new line" })
-vim.keymap.set("i", "sl<leader>", "\\", { desc = "insert new line" })
+vim.keymap.set("i", "sl<leader>", "\\", { desc = "insert slash" })
+vim.keymap.set("i", "dsl<leader>", "\\\\", { desc = "insert slash" })
+vim.keymap.set("i", "kl<leader>", "{}<escape>i", { desc = "insert curly braces" })
 vim.keymap.set("i", "lll", "<escape>la", { desc = "move cursor one to the right" })
 vim.keymap.set("i", "hhh", "<escape>ha", { desc = "move cursor one to the left" })
