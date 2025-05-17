@@ -32,12 +32,21 @@ vim.keymap.set("n", "<C-Up>", "<cmd>resize +2<cr>", { desc = "Increase window he
 vim.keymap.set("t", "<C-Up>", "<cmd>resize +2<cr>", { desc = "Increase window height" })
 vim.keymap.set("t", "<C-Down>", "<cmd>resize -2<cr>", { desc = "Decrease window height" })
 
+-- markdown stuff
+vim.keymap.set("n", "<C-B>", "i**<escape>2wi**<escape>", { desc = "Decrease window height" })
+
 -- switch spell checked language
 vim.keymap.set(
   "n",
   "<leader>spd",
   "<cmd>set spell spelllang=de_de<cr>",
   { desc = "set spell checked language to german" }
+)
+vim.keymap.set(
+  "n",
+  "<leader>sps",
+  "<cmd>set spell spelllang=es<cr>",
+  { desc = "set spell checked language to argentine spanish" }
 )
 vim.keymap.set(
   "n",
