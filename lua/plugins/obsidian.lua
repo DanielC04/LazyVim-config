@@ -26,7 +26,6 @@ return {
       -- Optional, if you want to automatically insert a template from your template directory like 'daily.md'
       template = "daily-note.md",
     },
-    overwrite_mappings = true,
     templates = {
       subdir = "templates/",
       date_format = "%Y-%m-%d-%a",
