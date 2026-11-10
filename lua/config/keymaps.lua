@@ -27,9 +27,10 @@ vim.keymap.set("i", "jk", "<escape>", { desc = "exit insert mode" })
 vim.keymap.set("v", "jk", "<escape>", { desc = "exit insert mode" })
 vim.keymap.set("t", "jk", "<C-\\><C-N>", { desc = "exit insert mode" })
 
--- Claude terminal: <C-k> / <C-j> scroll up / down (sends PageUp / PageDown to Claude Code).
--- Buffer-local, set on TermEnter so it overrides snacks' <C-j>/<C-k> window-nav maps
--- (up/down nav is useless in the vertical Claude split anyway).
+-- Claude terminal: <C-k> / <C-j> scroll up / down (PageUp / PageDown),
+-- <C-h> / <C-l> move the cursor left / right (arrow keys).
+-- Buffer-local, set on TermEnter so it overrides snacks' <C-hjkl> window-nav maps;
+-- leave the Claude window with jk then <C-w>h.
 vim.api.nvim_create_autocmd("TermEnter", {
   group = vim.api.nvim_create_augroup("claude_scroll_keys", { clear = true }),
   callback = function(ev)
@@ -38,6 +39,8 @@ vim.api.nvim_create_autocmd("TermEnter", {
     end
     vim.keymap.set("t", "<C-k>", "<PageUp>", { buffer = ev.buf, desc = "Claude: scroll up" })
     vim.keymap.set("t", "<C-j>", "<PageDown>", { buffer = ev.buf, desc = "Claude: scroll down" })
+    vim.keymap.set("t", "<C-h>", "<Left>", { buffer = ev.buf, desc = "Claude: cursor left" })
+    vim.keymap.set("t", "<C-l>", "<Right>", { buffer = ev.buf, desc = "Claude: cursor right" })
   end,
 })
 
