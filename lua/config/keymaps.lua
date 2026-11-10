@@ -10,17 +10,17 @@ vim.g.mapleader = " "
 -- source neovim config to avoid having to restart neovim everytime I change somehting
 vim.keymap.set("n", "<leader>sv", "<cmd>luafile %<cr>", { desc = "source neovim config" })
 
--- open terminal in bottom buffer
+-- open terminal fullscreen (in its own tab)
 vim.keymap.set("n", "<leader>t", function()
   if vim.bo.buftype ~= "terminal" then
-    vim.cmd("bo terminal")
-    vim.cmd("horizontal resize 10")
+    vim.cmd("tabnew")
+    vim.cmd("terminal")
   else
     vim.cmd("vsplit")
     vim.cmd("terminal")
   end
   vim.cmd("startinsert")
-end, { desc = "open terminal at bottom" })
+end, { desc = "open terminal fullscreen" })
 
 -- exit insert/visual mobe using jk instead of <escape>
 vim.keymap.set("i", "jk", "<escape>", { desc = "exit insert mode" })

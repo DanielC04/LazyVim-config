@@ -26,6 +26,8 @@ everything, or `<leader>?` for buffer-local keys.
 - Needs: `sudo dnf install kitty texlive-scheme-basic texlive-standalone texlive-preview
   texlive-varwidth texlive-mathtools texlive-amsfonts texlive-xcolor`
 - Broken? `:checkhealth snacks`
+- Paths with spaces need angle brackets: `![](<media/my image.png>)`, else not parsed as image.
+- Image on the very last line of a file may not render: leave an empty line after it.
 
 ## Obsidian vault (`/documents/Notes`), `plugins/obsidian.lua`
 
@@ -70,13 +72,27 @@ Watch out: `yy` in insert mode means you can't type "yy".
 | Key | Does |
 |---|---|
 | `<C-b>` | Wrap word in `**bold**` |
-| `<leader>t` | Terminal at bottom (in a terminal: vsplit another) |
+| `<leader>t` | Terminal fullscreen in a new tab (in a terminal: vsplit another). `gt`/`gT` switch tabs |
 | `<C-Up>` | Grow window (normal + terminal) |
 | `<leader>spe` / `spd` / `sps` | Spell language English / German / Spanish (spell is off by default) |
 | `<leader>sv` | Source current lua file |
 | `<leader>kk` | Toggle terminal (`kkh` horizontal, `kkv` vertical, `kkt` tab, `kkf` float) |
 
 Mouse is disabled (`set mouse=`).
+
+## Claude in Neovim, LazyVim extra `ai.claudecode` (claudecode.nvim)
+
+| Key | Does |
+|---|---|
+| `<leader>ac` | Toggle Claude terminal (same session each time) |
+| `<leader>af` | Focus Claude window |
+| `<leader>wm` | Zoom current window fullscreen / back (LazyVim, any window; use on Claude after `<leader>af`) |
+| `<leader>as` (visual) | Send selection to Claude |
+| `<leader>ab` | Add current note as context |
+| `<leader>aa` / `<leader>ad` | Accept / reject Claude's proposed edit (diff) |
+| `<leader>ar` / `<leader>aC` | Resume old session / continue last one |
+
+Claude started outside Neovim: type `/ide` in it to connect.
 
 ## LaTeX, `plugins/vimtex.lua`
 
@@ -86,7 +102,7 @@ Mouse is disabled (`set mouse=`).
 
 ## Other plugins & setup
 
-- **LazyVim extras** (`lazyvim.json`): dap.core, ai.copilot, lang clangd/python/rust/tex/typescript/json, vscode, ui.mini-starter.
+- **LazyVim extras** (`lazyvim.json`): dap.core, ai.copilot, ai.claudecode, lang clangd/python/rust/tex/typescript/json, vscode, ui.mini-starter.
 - **DAP for C** (`config/dap-config.lua`): gdb, asks for the executable path.
 - **Python host**: `~/.venv/bin/python3` (`config/options.lua`).
 - **icon-picker.nvim**: `:IconPickerNormal` / `:IconPickerInsert`.
