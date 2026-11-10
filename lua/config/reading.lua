@@ -21,7 +21,21 @@ function M.setup()
     run({ "lint" }, "Reading lint")
   end, { desc = "Check all reading notes, results in quickfix" })
 
+  vim.api.nvim_create_user_command("ReadingNew", function(o)
+    local function create(title)
+      if title and vim.trim(title) ~= "" then
+        vim.cmd("Obsidian new_from_template Reading/" .. vim.trim(title) .. " reading")
+      end
+    end
+    if o.args ~= "" then
+      create(o.args)
+    else
+      vim.ui.input({ prompt = "Reading note title: " }, create)
+    end
+  end, { nargs = "?", desc = "New reading note in Reading/ from templates/reading.md" })
+
   vim.keymap.set("n", "<leader>oP", "<cmd>ReadingSync<cr>", { desc = "Reading: publish to website (commit)" })
+  vim.keymap.set("n", "<leader>oR", "<cmd>ReadingNew<cr>", { desc = "Reading: new reading note" })
 end
 
 return M

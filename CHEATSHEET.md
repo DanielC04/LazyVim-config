@@ -124,6 +124,7 @@ Only this part is published (gives the entry its own page on the site).
 
 | Key / command | Does |
 |---|---|
+| `<leader>oR` / `:ReadingNew [title]` | New note `Reading/<title>.md` from `templates/reading.md`, fill the empty properties |
 | `<leader>oP` / `:ReadingSync` | Write all `reading/public` notes into the site repo + **commit** there (no deploy) |
 | `:ReadingSync!` | Same + **push** → GitHub Actions deploys the site |
 | `:ReadingImport` | Site entries without a note → new notes in `Reading/` (never overwrites) |
