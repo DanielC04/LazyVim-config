@@ -183,6 +183,7 @@ Mouse is disabled (`set mouse=`).
 | `<leader>ab` | Add current note as context |
 | `<leader>aa` / `<leader>ad` | Accept / reject Claude's proposed edit (diff) |
 | `<leader>ar` / `<leader>aC` | Resume old session / continue last one |
+| `<C-k>` / `<C-j>` (terminal insert mode) | Scroll Claude up / down (PageUp / PageDown) |
 
 Claude started outside Neovim: type `/ide` in it to connect.
 
