@@ -45,9 +45,57 @@ everything, or `<leader>?` for buffer-local keys.
 | `<leader>ox` (visual) | Extract selection to new note |
 | `gf` / `<CR>` | Follow `[[link]]` (`<CR>` also toggles checkboxes) |
 | `[[` + 2 chars | Link completion |
-| `<leader>ga` | Generate Anki cards (`obsidian_to_anki/main.py`) |
+| `<leader>ga` / `<leader>gA` | Export Anki cards: changed files / current file (see below) |
 
 Pasting images: pastify.nvim (`:Pastify`) saves to `/media/` and inserts `![](…)`.
+
+## Anki cards from notes, `config/anki.lua` + `plugins/anki-lint.lua`
+
+Exporter lives in the vault: `/documents/Notes/obsidian_to_anki/` (Python, run via `uv`).
+**Anki must be running with the AnkiConnect add-on** (code `2055492159`) for sync, not for lint.
+
+```markdown
+<!-- card type="Basic" deck="Uni::Semester5::PEM" tags="uni, pem" -->
+Front: markdown, $math$, $$display math$$, ![](<media/x y.png>), ![[img.png|300]], [[links]]
+<!-- back -->
+Back side
+<!-- card -->
+```
+
+- Attributes: `type` (default `Basic`; also `Cloze`, `Basic (and reversed card)`, … any note
+  type in Anki, case-insensitive), `deck` (default `Default`, created if missing), `tags`
+  (comma-separated, spaces become `_`, tag `study` always added), `id` (written by sync, **don't
+  edit or copy it**; a copied card with the same id is blocked).
+- Cloze: deletions `{{c1::…}}` (or escaped `\{\{c1::…\}\}`) must be **before** `<!-- back -->`;
+  the back goes into "Back Extra".
+- Markers inside code blocks / inline code are ignored. Cards can be in subfolders too.
+- Images are uploaded to Anki's media folder automatically (only those the cards use).
+
+| Key / command | Does |
+|---|---|
+| `<leader>ga` / `:AnkiSync` | Save all, export cards of **changed** files, ids written back, buffers reloaded |
+| `:AnkiSync!` | Same, but every file (after config/render changes) |
+| `<leader>gA` / `:AnkiSyncFile` | Export cards of the current file (always, ignores cache) |
+| `:AnkiLint` | Check every card in the vault → quickfix list |
+
+- Errors/warnings land in the **quickfix list** (opens automatically; `]q`/`[q` to jump), summary
+  as a notification. Live lint diagnostics (source `anki`) show in any vault note on
+  open/save/InsertLeave: unclosed/stray tags, broken attributes, bad deck, wrong-case or unknown
+  type, Cloze without deletion, empty front, missing image, unbalanced `$`, duplicate ids/fronts.
+- Cards with errors are skipped; their file is retried on every sync until fixed. A file only
+  counts as done (cache `obsidian_to_anki/.sync_state.json`, not in git) when all its cards worked.
+- Existing notes are updated in place (review history kept), moved if the deck changed, and
+  left alone if nothing changed. Tags `leech`/`marked` set in Anki are kept. Note type can't be
+  changed by sync (error tells you what to do).
+- Card without id whose front already exists in Anki (ids lost by the old exporter) gets
+  relinked to that note instead of creating a duplicate.
+- Deleting a card in the note does **not** delete it in Anki (do that in Anki).
+- An update doesn't apply while the note is open in Anki's Browse window: close it, sync again.
+- Shell: `cd /documents/Notes && obsidian_to_anki/main.py [sync] [-f] [-n] [FILES…]`
+  (`-n` dry run, no Anki needed), `python3 obsidian_to_anki/main.py lint [FILES…]`.
+  Exit code 0 ok, 1 card errors, 2 Anki not reachable.
+- Settings (ignored folders, blacklisted files, known note types, AnkiConnect URL):
+  `obsidian_to_anki/config.py`.
 
 ## Insert-mode abbreviations & shortcuts, `config/keymaps.lua`
 
@@ -63,7 +111,7 @@ Pasting images: pastify.nvim (`:Pastify`) saves to `/media/` and inserts `![](�
 | `lll` / `hhh` | Cursor one right / left |
 | `reals` | `\mathbb{R}` |
 | `odef` | `>[!Definition]` callout |
-| `begincard` / `turncard` / `endcard` | Anki card markers (deck `Uni::Semester1::Wirtschaft`) |
+| `begincard` / `turncard` / `endcard` | Anki card markers (deck `Uni::Semester1::Wirtschaft`, edit after) |
 
 Watch out: `yy` in insert mode means you can't type "yy".
 

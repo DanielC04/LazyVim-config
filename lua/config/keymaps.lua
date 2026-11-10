@@ -63,13 +63,8 @@ vim.cmd("abb reals \\mathbb{R}")
 -- Obsidian insert definition
 vim.cmd("abb odef >[!Definition] <CR>>")
 -- Obsidian follow link (gf / <CR>): now set buffer-locally in lua/plugins/obsidian.lua
--- Obsidian: generate learning cards
-vim.keymap.set(
-  "n",
-  "<leader>ga",
-  "<cmd>!python3 /documents/Notes/obsidian_to_anki/main.py<cr>",
-  { desc = "generate ani keycards from obsidian notes" }
-)
+-- Obsidian -> Anki: :AnkiSync[!], :AnkiSyncFile, :AnkiLint, <leader>ga / <leader>gA
+require("config.anki").setup()
 
 -- disable mouse
 vim.cmd("set mouse=")
