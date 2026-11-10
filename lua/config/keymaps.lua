@@ -65,6 +65,8 @@ vim.cmd("abb odef >[!Definition] <CR>>")
 -- Obsidian follow link (gf / <CR>): now set buffer-locally in lua/plugins/obsidian.lua
 -- Obsidian -> Anki: :AnkiSync[!], :AnkiSyncFile, :AnkiLint, <leader>ga / <leader>gA
 require("config.anki").setup()
+-- Reading notes -> dcermann.de: :ReadingSync[!], :ReadingImport, :ReadingLint, <leader>oP
+require("config.reading").setup()
 
 -- disable mouse
 vim.cmd("set mouse=")

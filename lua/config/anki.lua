@@ -5,10 +5,11 @@ M.vault = "/documents/Notes"
 M.script = M.vault .. "/obsidian_to_anki/main.py"
 M.efm = "%f:%l:%c: %trror: %m,%f:%l:%c: %tarning: %m"
 
---- Run main.py with `args`, put its diagnostics into the quickfix list.
-function M.run(args, title)
-  vim.cmd("silent! wall") -- the exporter reads files from disk
-  local cmd = vim.list_extend({ "uv", "run", "--quiet", "--script", M.script }, args)
+--- Run a vault script (default: the Anki exporter) with `args`,
+--- put its diagnostics into the quickfix list. Also used by config/reading.lua.
+function M.run(args, title, script)
+  vim.cmd("silent! wall") -- the scripts read files from disk
+  local cmd = vim.list_extend({ "uv", "run", "--quiet", "--script", script or M.script }, args)
   local cwd = vim.fn.getcwd() -- paths in the output are relative to this
   vim.notify(title .. " …", vim.log.levels.INFO, { title = "Anki" })
   vim.system(cmd, { text = true, cwd = cwd }, function(res)

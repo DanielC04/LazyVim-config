@@ -49,7 +49,7 @@ everything, or `<leader>?` for buffer-local keys.
 
 Pasting images: pastify.nvim (`:Pastify`) saves to `/media/` and inserts `![](…)`.
 
-## Anki cards from notes, `config/anki.lua` + `plugins/anki-lint.lua`
+## Anki cards from notes, `config/anki.lua` + `plugins/vault-lint.lua`
 
 Exporter lives in the vault: `/documents/Notes/obsidian_to_anki/` (Python, run via `uv`).
 **Anki must be running with the AnkiConnect add-on** (code `2055492159`) for sync, not for lint.
@@ -96,6 +96,49 @@ Back side
   Exit code 0 ok, 1 card errors, 2 Anki not reachable.
 - Settings (ignored folders, blacklisted files, known note types, AnkiConnect URL):
   `obsidian_to_anki/config.py`.
+
+## Reading list on dcermann.de from notes, `config/reading.lua` + `plugins/vault-lint.lua`
+
+Papers / books / blog posts I read live as notes in `Reading/` (vault). Tagging a note
+`reading/public` publishes its **metadata** to `dcermann.de/papers`. The note text stays private.
+Tool: `/documents/Notes/reading_sync/main.py`, site repo `/documents/programming_projects/dcermann.de`.
+
+```yaml
+---
+tags: [reading, reading/public]   # without reading/public: private reading note
+type: paper                        # paper | book | blog
+status: read                       # to-read | reading | read
+authors: [Jane Doe, John Roe]
+year: 2024
+url: https://arxiv.org/abs/…
+dateRead: 2026-11-10               # optional (needed for the reading-activity heatmap)
+siteTags: [alignment, ai-agents]   # only tags from the site's src/data/topics.ts
+tldr: One public sentence.         # optional
+siteSlug: my-paper                 # optional, URL name; set automatically by import
+---
+my private notes …
+<!-- public -->
+Only this part is published (gives the entry its own page on the site).
+<!-- /public -->
+```
+
+| Key / command | Does |
+|---|---|
+| `<leader>oP` / `:ReadingSync` | Write all `reading/public` notes into the site repo + **commit** there (no deploy) |
+| `:ReadingSync!` | Same + **push** → GitHub Actions deploys the site |
+| `:ReadingImport` | Site entries without a note → new notes in `Reading/` (never overwrites) |
+| `:ReadingLint` | Check all reading notes → quickfix |
+
+- Live lint (source `reading`) in reading notes: missing authors/year/url/status, wrong
+  type/status, site tags the site doesn't know (would break the build), unbalanced public markers.
+- Notes with errors are skipped, their old site entry stays. Removing the `reading/public` tag or
+  deleting the note removes the entry from the site on the next sync.
+- Only site files marked `source: "obsidian"` are touched; hand-written site entries are left
+  alone (claim one by setting `siteSlug:` to its file name).
+- New site tag: add it to `tagToTopic` in the site's `src/data/topics.ts` first.
+- Shell: `cd /documents/Notes && reading_sync/main.py sync [-n] [--commit|--push]`,
+  `reading_sync/main.py import [-n]`, `python3 reading_sync/main.py lint [FILES…]`.
+- Settings (site repo path, tags, folder): `reading_sync/config.py`.
 
 ## Insert-mode abbreviations & shortcuts, `config/keymaps.lua`
 
