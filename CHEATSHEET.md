@@ -184,7 +184,7 @@ Mouse is disabled (`set mouse=`).
 | `<leader>aa` / `<leader>ad` | Accept / reject Claude's proposed edit (diff) |
 | `<leader>ar` / `<leader>aC` | Resume old session / continue last one |
 | `<C-k>` / `<C-j>` (terminal insert mode) | Scroll Claude up / down (PageUp / PageDown) |
-| `<M-h>` / `<M-l>` (terminal insert mode) | Cursor left / right in Claude's prompt (arrow keys) |
+| `<M-h>` / `<M-j>` / `<M-k>` / `<M-l>` (terminal insert mode) | Arrow keys left / down / up / right in Claude |
 
 Claude started outside Neovim: type `/ide` in it to connect.
 
