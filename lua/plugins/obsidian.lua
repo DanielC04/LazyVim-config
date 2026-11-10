@@ -1,62 +1,101 @@
+-- obsidian.nvim (maintained fork: obsidian-nvim/obsidian.nvim; epwalsh/obsidian.nvim is archived)
+-- Link completion comes from the plugin's built-in LSP server ("obsidian-ls"), which blink.cmp
+-- picks up through its default "lsp" source: type [[ plus 2 chars to get note names and aliases.
+local vault = "/documents/Notes"
+
 return {
-  "epwalsh/obsidian.nvim",
-  lazy = true,
-  log_level = vim.log.levels.DEBUG,
-  event = {
-    -- If you want to use the home shortcut '~' here you need to call 'vim.fn.expand'.
-    -- E.g. "BufReadPre " .. vim.fn.expand "~" .. "/my-vault/**.md"
-    "BufReadPre /documents/Notes/**.md",
-    "BufNewFile /documents/Notes/**.md",
-  },
-  dependencies = {
-    -- Required.
-    "nvim-lua/plenary.nvim",
-    -- see below for full list of optional dependencies 👇
-  },
-  opts = {
-    dir = "/documents/Notes", -- no need to call 'vim.fn.expand' here
-    mappings = {},
-    daily_notes = {
-      -- Optional, if you keep daily notes in a separate directory.
-      folder = "dailies",
-      -- Optional, if you want to change the date format for the ID of daily notes.
-      date_format = "%d-%m-%Y",
-      -- Optional, if you want to change the date format of the default alias of daily notes.
-      alias_format = "%A, %d %B %Y",
-      -- Optional, if you want to automatically insert a template from your template directory like 'daily.md'
-      template = "daily-note.md",
+  {
+    "obsidian-nvim/obsidian.nvim",
+    version = "*", -- latest release instead of main
+    lazy = true,
+    event = {
+      "BufReadPre " .. vault .. "/**.md",
+      "BufNewFile " .. vault .. "/**.md",
     },
-    templates = {
-      subdir = "templates/",
-      date_format = "%Y-%m-%d-%a",
-      time_format = "%H:%M",
-      substitutions = {
-        writtendate = function()
-          return os.date("%A, %d. %B %Y")
-        end,
-        yesterday = function()
-          return os.date("%Y-%m-%d", os.time() - 86400)
-        end,
+    cmd = "Obsidian",
+    dependencies = { "nvim-lua/plenary.nvim" },
+    keys = {
+      { "<leader>oo", "<cmd>Obsidian quick_switch<cr>", desc = "Quick switch note" },
+      { "<leader>on", "<cmd>Obsidian new<cr>", desc = "New note" },
+      { "<leader>ob", "<cmd>Obsidian backlinks<cr>", desc = "Backlinks" },
+      { "<leader>ol", "<cmd>Obsidian links<cr>", desc = "Links in note" },
+      { "<leader>os", "<cmd>Obsidian search<cr>", desc = "Search vault" },
+      { "<leader>ot", "<cmd>Obsidian tags<cr>", desc = "Tags" },
+      { "<leader>od", "<cmd>Obsidian today<cr>", desc = "Daily note (today)" },
+      { "<leader>or", "<cmd>Obsidian rename<cr>", desc = "Rename note (updates links)" },
+      { "<leader>oT", "<cmd>Obsidian template<cr>", desc = "Insert template" },
+      { "<leader>ol", ":Obsidian link<cr>", mode = "v", desc = "Link selection to note" },
+      { "<leader>ox", ":Obsidian extract_note<cr>", mode = "v", desc = "Extract selection to new note" },
+    },
+    ---@module 'obsidian'
+    ---@type obsidian.config
+    opts = {
+      legacy_commands = false, -- only the new `:Obsidian <subcommand>` form
+      workspaces = {
+        { name = "Notes", path = vault },
       },
-    },
-    -- Optional, customize how names/IDs for new notes are created.
-    note_id_func = function(title)
-      -- Create note IDs in a Zettelkasten format with a timestamp and a suffix.
-      -- In this case a note with the title 'My new note' will be given an ID that looks
-      -- like '1657296016-my-new-note', and therefore the file name '1657296016-my-new-note.md'
-      local suffix = ""
-      if title ~= nil then
-        -- If title is given, transform it into valid file name.
-        suffix = title:gsub(" ", " ")
-      else
-        -- If title is nil, just add 4 random uppercase letters to the suffix.
+      -- keep links like the existing ones: [[Note name]]
+      link = { style = "wiki", format = "shortest" },
+      completion = {
+        min_chars = 2,
+        match_case = false,
+        create_new = true,
+      },
+      -- note id = title, file name = "<title>.md" (matches existing notes)
+      note_id_func = function(title)
+        if title ~= nil and title ~= "" then
+          return title
+        end
+        local suffix = ""
         for _ = 1, 4 do
           suffix = suffix .. string.char(math.random(65, 90))
         end
-      end
-
-      return suffix
-      -- return tostring(os.time()) .. "-" .. suffix
-    end,
+        return suffix
+      end,
+      -- frontmatter id / aliases / tags + "# Title" heading (template lives in the nvim config, not the vault)
+      note = {
+        template = vim.fn.stdpath("config") .. "/templates/obsidian-note.md",
+      },
+      frontmatter = { sort = { "id", "aliases", "tags" } },
+      daily_notes = {
+        folder = "dailies",
+        date_format = "%d-%m-%Y",
+        alias_format = "%A, %d %B %Y",
+        template = "daily-note.md",
+      },
+      templates = {
+        folder = "templates",
+        date_format = "%Y-%m-%d-%a",
+        time_format = "%H:%M",
+        substitutions = {
+          writtendate = function()
+            return os.date("%A, %d. %B %Y")
+          end,
+          yesterday = function()
+            return os.date("%Y-%m-%d", os.time() - 86400)
+          end,
+        },
+      },
+      attachments = { folder = "media" },
+      -- in-buffer rendering is done by render-markdown.nvim (see render-markdown.lua)
+      ui = { enable = false },
+      callbacks = {
+        enter_note = function()
+          -- gf follows [[links]] inside notes, falls back to normal gf otherwise.
+          -- <CR> (smart action: follow link / toggle checkbox) is mapped by obsidian.nvim itself.
+          vim.keymap.set("n", "gf", function()
+            if require("obsidian.api").cursor_link() then
+              return "<cmd>Obsidian follow_link<cr>"
+            end
+            return "gf"
+          end, { buffer = true, expr = true, desc = "Follow link" })
+        end,
+      },
+    },
+  },
+  {
+    "folke/which-key.nvim",
+    optional = true,
+    opts = { spec = { { "<leader>o", group = "obsidian", icon = "󰠮" } } },
   },
 }

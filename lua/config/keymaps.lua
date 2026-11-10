@@ -54,22 +54,15 @@ vim.keymap.set(
   "<cmd>set spell spelllang=en_us<cr>",
   { desc = "set spell checked language to english" }
 )
--- default language: german
-vim.cmd("set spell spelllang=de_de | setlocal nospell ")
+-- default language: english
+vim.cmd("set spell spelllang=en_us | setlocal nospell ")
 
 -- latex: insert real number symbol
 vim.cmd("abb reals \\mathbb{R}")
 
 -- Obsidian insert definition
 vim.cmd("abb odef >[!Definition] <CR>>")
--- Obsidian follow link
-vim.keymap.set("n", "gf", function()
-  if require("obsidian").util.cursor_on_markdown_link() then
-    return "<cmd>ObsidianFollowLink<CR>"
-  else
-    return "gf"
-  end
-end, { noremap = false, expr = true })
+-- Obsidian follow link (gf / <CR>): now set buffer-locally in lua/plugins/obsidian.lua
 -- Obsidian: generate learning cards
 vim.keymap.set(
   "n",
