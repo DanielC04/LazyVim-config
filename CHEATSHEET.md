@@ -141,6 +141,26 @@ Only this part is published (gives the entry its own page on the site).
   `reading_sync/main.py import [-n]`, `python3 reading_sync/main.py lint [FILES…]`.
 - Settings (site repo path, tags, folder): `reading_sync/config.py`.
 
+### PDF beside the note, `config/reading_pdf.lua`
+
+Opens the paper's PDF in a left split (pages as images, kitty only) next to the reading note.
+PDF source: frontmatter `pdf:` (local path, vault-relative path or URL) wins, else `url:`;
+arxiv `abs/` links become PDF links automatically. Web pages (blogs, LessWrong, paywalled DOI)
+have no PDF → add `pdf:`. Downloads + rendered pages cached in `~/.cache/nvim/reading-pdfs`.
+
+| Where | Key / command | Does |
+|---|---|---|
+| Note | `<leader>op` / `:ReadingPdf [path\|url]` | Open the note's PDF (or the given path/URL) beside it |
+| PDF pane | `]p` `[p` / `<PageDown>` `<PageUp>` | Next / previous page |
+| PDF pane | `gp` | Go to page … |
+| PDF pane | `t` | Toggle page image ↔ plain text (search, copy) |
+| PDF pane | `r` | Remark: insert `- p.N: ` in the note, start typing |
+| PDF pane | `Q` (visual, text view) | Quote selection into the note as `> … (p.N)` |
+| PDF pane | `q` | Close the PDF pane |
+| Note | `,r` | Remark at the current page |
+| Note | `,g` | Jump the PDF to the `p.N` / `page N` under the cursor |
+| Note | `,n` / `,p` | Next / previous page |
+
 ## Insert-mode abbreviations & shortcuts, `config/keymaps.lua`
 
 | Type | Get |

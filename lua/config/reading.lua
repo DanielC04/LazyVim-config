@@ -36,6 +36,8 @@ function M.setup()
 
   vim.keymap.set("n", "<leader>oP", "<cmd>ReadingSync<cr>", { desc = "Reading: publish to website (commit)" })
   vim.keymap.set("n", "<leader>oR", "<cmd>ReadingNew<cr>", { desc = "Reading: new reading note" })
+
+  require("config.reading_pdf").setup()
 end
 
 return M
