@@ -158,7 +158,9 @@ After opening, the cursor lands in the note so you can start writing. Inside a P
 | Note | `<leader>op` / `:ReadingPdf [path\|url]` | Open the note's PDF (or the given path/URL) beside it |
 | PDF pane | `]p` `[p` / `<PageDown>` `<PageUp>` / `<C-j>` `<C-k>` | Next / previous page |
 | PDF pane | `+` (or `=`) / `-` / `0` | Zoom in (1.5× per press, max 6×) / out / back to full page |
-| PDF pane | `h` `j` `k` `l` (count ok) | Pan while zoomed; cursor moves as usual at 100% or in text view |
+| PDF pane | `w` | Fit text width: zoom so the text column(s) fill the pane, margins cropped; stays on for later pages until `+`/`-`/`0` (use `j`/`k` to scroll) |
+| PDF pane | `c` | Zoomed: centre the view horizontally on the text column(s), zoom unchanged (falls back to page centre). At 100%: toggle centring the page in the pane (white padding left/right, stays on across pages) |
+| PDF pane | `h` `j` `k` `l` (count ok) | Pan while zoomed (`h`/`l` in 1/8-view steps, `j`/`k` in 1/3); cursor moves as usual at 100% or in text view |
 | PDF pane | `gp` | Go to page … |
 | PDF pane | `t` | Toggle page image ↔ plain text (search, copy) |
 | PDF pane | `r` | Remark: insert `- p.N: ` in the note, start typing |

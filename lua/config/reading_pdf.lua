@@ -12,6 +12,9 @@
 --   :ReadingPdf [path|url]   <leader>op   open the PDF for the current note
 --   PDF pane:  ]p [p  <PageDown> <PageUp>  <C-j> <C-k>  next / prev page
 --              + (=) / - / 0   zoom in / out / reset    h j k l  pan while zoomed
+--              w   fit the text column's width (sticks across pages; j/k scroll)
+--              c   centre the view horizontally on the text (keeps zoom);
+--                  at 100% it toggles centring the page in the pane
 --              gp  go to page     t  toggle image / text view
 --              r   remark at this page (jumps to the note)
 --              Q   (visual, text view) quote selection into the note
@@ -194,13 +197,36 @@ local function page_text(pdf, page)
   return vim.split((r.stdout or ""):gsub("\f", ""), "\n")
 end
 
+--- Horizontal extent of the page's text as fractions of page width, or nil
+--- (scanned page / no text). Uses text lines, ignoring short ones (line
+--- numbers, page numbers, headers) and outliers (arXiv side stamp).
+local function text_columns(pdf, page, pw)
+  local r = vim.system({ "pdftotext", "-f", tostring(page), "-l", tostring(page), "-bbox-layout", pdf, "-" }):wait()
+  local xs0, xs1 = {}, {}
+  for x0, x1 in (r.stdout or ""):gmatch('<line xMin="([%d.]+)" yMin="[%d.]+" xMax="([%d.]+)"') do
+    x0, x1 = tonumber(x0), tonumber(x1)
+    if x1 - x0 > pw * 0.15 then
+      xs0[#xs0 + 1], xs1[#xs1 + 1] = x0, x1
+    end
+  end
+  if #xs0 < 3 then
+    return nil
+  end
+  table.sort(xs0)
+  table.sort(xs1)
+  local lo = xs0[math.max(1, math.floor(#xs0 * 0.05))]
+  local hi = xs1[math.min(#xs1, math.ceil(#xs1 * 0.95))]
+  return lo / pw, hi / pw
+end
+
 local function title()
   if not S then
     return
   end
   local name = vim.fn.fnamemodify(S.pdf, ":t")
-  local zoom = S.zoom > 1 and ("  zoom %d%%%%"):format(math.floor(S.zoom * 100 + 0.5)) or ""
-  vim.wo[S.pdf_win].winbar = ("%%#Title# %s %%* page %d / %d%s  %%#Comment#(%s · ]p [p gp t r q  +/-/0 zoom  hjkl pan)%%*"):format(
+  local zoom = S.zoom > 1 and ("  zoom %d%%%%%s"):format(math.floor(S.zoom * 100 + 0.5), S.fit and " (fit width)" or "")
+    or ""
+  vim.wo[S.pdf_win].winbar = ("%%#Title# %s %%* page %d / %d%s  %%#Comment#(%s · ]p [p gp t r q  +/-/0 zoom  w fit  c centre  hjkl pan)%%*"):format(
     name,
     S.page,
     S.pages,
@@ -247,6 +273,9 @@ local function show()
     return
   end
   local page = S.page
+  if S.fit and S.fit_page ~= S.page then
+    M.fit_width()
+  end
   local crop
   if S.zoom > 1 then
     clamp_pan()
@@ -261,15 +290,48 @@ local function show()
       h = math.floor(vh * ph),
     }
   end
-  local key = vim.inspect(crop)
+  -- Centred at 100%: pad the page with white on both sides to the pane's
+  -- aspect ratio (only when the pane is wider than the page).
+  local pad_w
+  if not crop and S.centre then
+    local cw, ch = 1, 2
+    pcall(function()
+      local t = Snacks.image.terminal.size()
+      cw, ch = t.cell_width, t.cell_height
+    end)
+    local win_ratio = (vim.api.nvim_win_get_width(S.pdf_win) * cw) / (vim.api.nvim_win_get_height(S.pdf_win) * ch)
+    local img_w, img_h = math.floor(S.pw / 72 * DPI), math.floor(S.ph / 72 * DPI)
+    local w = math.floor(img_h * win_ratio)
+    if w > img_w + 2 then
+      pad_w = w
+    end
+  end
+  local key = vim.inspect(crop) .. tostring(pad_w)
   S.view = key
-  render(S.pdf, page, function(png)
+  local function attach(png)
     if not S or S.page ~= page or S.view ~= key or S.mode ~= "image" or not vim.api.nvim_buf_is_valid(buf) then
       return
     end
     vim.bo[buf].modifiable = true
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
     Snacks.image.buf.attach(buf, { src = png })
+  end
+  render(S.pdf, page, function(png)
+    if not pad_w then
+      return attach(png)
+    end
+    local out = ("%s/zoom/%s-p%d-c%d.png"):format(cache, vim.fn.fnamemodify(S.pdf, ":t:r"), page, pad_w)
+    if vim.fn.filereadable(out) == 1 then
+      return attach(out)
+    end
+    vim.fn.mkdir(cache .. "/zoom", "p")
+    vim.system(
+      { "magick", png, "-background", "white", "-gravity", "center", "-extent", pad_w .. "x", out },
+      {},
+      vim.schedule_wrap(function(r)
+        attach(r.code == 0 and out or png)
+      end)
+    )
   end, crop)
   -- Prefetch the neighbours so turning pages is instant.
   for _, p in ipairs({ page + 1, page - 1 }) do
@@ -280,6 +342,20 @@ local function show()
 end
 
 -- ── Session actions ──────────────────────────────────────────────────────
+
+--- Zoom so the page's text column(s) fill the pane's width, margins cropped.
+--- Only sets S.zoom / S.x (show() calls this while S.fit is on).
+function M.fit_width()
+  local lo, hi = text_columns(S.pdf, S.page, S.pw)
+  if not lo then
+    lo, hi = 0, 1
+  end
+  local pad = 0.015
+  lo, hi = math.max(0, lo - pad), math.min(1, hi + pad)
+  S.zoom = math.max(1, math.min(6, 1 / (hi - lo)))
+  S.x = lo
+  S.fit_page = S.page
+end
 
 local function go(page)
   if not S then
@@ -459,6 +535,8 @@ local function open_pane(pdf, note_buf)
     pdf_buf = buf,
     pdf_win = win,
     zoom = 1,
+    fit = false,
+    centre = false,
     x = 0,
     y = 0,
     pw = tonumber(pw) or 612,
@@ -491,6 +569,7 @@ local function open_pane(pdf, note_buf)
     end
     local vw, vh = viewport()
     local cx, cy = S.x + vw / 2, S.y + vh / 2 -- keep the centre fixed
+    S.fit = false
     S.zoom = math.max(1, math.min(6, z))
     vw, vh = viewport()
     S.x, S.y = cx - vw / 2, cy - vh / 2
@@ -506,11 +585,32 @@ local function open_pane(pdf, note_buf)
         return vim.cmd("normal! " .. vim.v.count1 .. key)
       end
       local vw, vh = viewport()
-      S.x = S.x + d[1] * vw / 3 * vim.v.count1
+      -- Small sideways steps so the view can be lined up with the text.
+      S.x = S.x + d[1] * vw / 8 * vim.v.count1
       S.y = S.y + d[2] * vh / 3 * vim.v.count1
       show()
     end, "pan " .. key)
   end
+  map("n", "w", function()
+    if S.mode ~= "image" then
+      return vim.cmd("normal! " .. vim.v.count1 .. "w")
+    end
+    S.fit, S.fit_page = true, nil
+    show()
+  end, "fit text width")
+  map("n", "c", function()
+    if S.mode ~= "image" then
+      return
+    end
+    if S.zoom <= 1 then
+      S.centre = not S.centre
+      return show()
+    end
+    local lo, hi = text_columns(S.pdf, S.page, S.pw)
+    local mid = lo and (lo + hi) / 2 or 0.5
+    S.x = mid - viewport() / 2
+    show()
+  end, "centre horizontally on text")
   map("n", "t", function()
     S.mode = S.mode == "image" and "text" or "image"
     show()
