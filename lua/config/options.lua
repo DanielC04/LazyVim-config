@@ -3,4 +3,5 @@
 -- Add any additional options here
 -- jkoopts.rocks.hererocks = false
 
-vim.g.python3_host_prog = "/home/daniel/.venv/bin/python3"
+-- Dedicated venv so system Python upgrades don't strand pynvim in a stale ~/.venv
+vim.g.python3_host_prog = vim.fn.expand("~/.local/share/nvim/py-venv/bin/python3")
