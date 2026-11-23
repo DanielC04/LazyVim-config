@@ -147,11 +147,18 @@ Opens the paper's PDF in a left split (pages as images, kitty only) next to the 
 PDF source: frontmatter `pdf:` (local path, vault-relative path or URL) wins, else `url:`;
 arxiv `abs/` links become PDF links automatically. Web pages (blogs, LessWrong, paywalled DOI)
 have no PDF → add `pdf:`. Downloads + rendered pages cached in `~/.cache/nvim/reading-pdfs`.
+Cache cleanup: zoomed views are deleted when the pane closes; on each open, page renders
+not viewed for 30 days are dropped and the oldest go once `pages/` passes 500 MB
+(`PAGE_MAX_AGE_DAYS` / `PAGE_CACHE_MAX_MB` in the file). Downloaded PDFs are kept.
+After opening, the cursor lands in the note so you can start writing. Inside a PDF session
+`<C-j>`/`<C-k>` turn pages instead of moving between windows (`<C-h>`/`<C-l>` still do).
 
 | Where | Key / command | Does |
 |---|---|---|
 | Note | `<leader>op` / `:ReadingPdf [path\|url]` | Open the note's PDF (or the given path/URL) beside it |
-| PDF pane | `]p` `[p` / `<PageDown>` `<PageUp>` | Next / previous page |
+| PDF pane | `]p` `[p` / `<PageDown>` `<PageUp>` / `<C-j>` `<C-k>` | Next / previous page |
+| PDF pane | `+` (or `=`) / `-` / `0` | Zoom in (1.5× per press, max 6×) / out / back to full page |
+| PDF pane | `h` `j` `k` `l` (count ok) | Pan while zoomed; cursor moves as usual at 100% or in text view |
 | PDF pane | `gp` | Go to page … |
 | PDF pane | `t` | Toggle page image ↔ plain text (search, copy) |
 | PDF pane | `r` | Remark: insert `- p.N: ` in the note, start typing |
@@ -159,7 +166,7 @@ have no PDF → add `pdf:`. Downloads + rendered pages cached in `~/.cache/nvim/
 | PDF pane | `q` | Close the PDF pane |
 | Note | `,r` | Remark at the current page |
 | Note | `,g` | Jump the PDF to the `p.N` / `page N` under the cursor |
-| Note | `,n` / `,p` | Next / previous page |
+| Note | `,n` / `,p` / `<C-j>` `<C-k>` | Next / previous page |
 
 ## Insert-mode abbreviations & shortcuts, `config/keymaps.lua`
 

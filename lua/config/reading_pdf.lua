@@ -10,18 +10,25 @@
 --
 -- Commands / keys
 --   :ReadingPdf [path|url]   <leader>op   open the PDF for the current note
---   PDF pane:  ]p [p  <PageDown> <PageUp>  next / prev page
+--   PDF pane:  ]p [p  <PageDown> <PageUp>  <C-j> <C-k>  next / prev page
+--              + (=) / - / 0   zoom in / out / reset    h j k l  pan while zoomed
 --              gp  go to page     t  toggle image / text view
 --              r   remark at this page (jumps to the note)
 --              Q   (visual, text view) quote selection into the note
 --              q   close the PDF pane
 --   Note:      ,r  remark at the current page    ,g  jump PDF to p.N under cursor
+--              <C-j> <C-k>  next / prev PDF page
 --              ,n / ,p  next / prev page
 
 local M = {}
 
 local cache = vim.fn.stdpath("cache") .. "/reading-pdfs"
 local DPI = 150
+-- Page renders not viewed for this long are deleted, and the oldest go first
+-- once pages/ is over the cap. Zoomed views are deleted when the pane closes.
+-- Downloaded PDFs are never pruned.
+local PAGE_MAX_AGE_DAYS = 30
+local PAGE_CACHE_MAX_MB = 500
 local UA = "Mozilla/5.0 (X11; Linux x86_64) reading-pdf"
 
 ---@class ReadingPdfSession
@@ -140,14 +147,36 @@ local function page_png(pdf, page)
   return ("%s/%s-p%d-%d"):format(cache .. "/pages", vim.fn.fnamemodify(pdf, ":t:r"), page, DPI)
 end
 
-local function render(pdf, page, cb)
+--- `crop` (optional) = { dpi, x, y, w, h } in pixels at that dpi: renders only
+--- that region of the page (used when zoomed in).
+local function render(pdf, page, cb, crop)
   local prefix = page_png(pdf, page)
+  local args = { "pdftoppm", "-f", tostring(page), "-l", tostring(page), "-r", tostring(DPI) }
+  if crop then
+    prefix = ("%s/zoom/%s-p%d-%d-%d-%d-%d-%d"):format(
+      cache,
+      vim.fn.fnamemodify(pdf, ":t:r"),
+      page,
+      crop.dpi,
+      crop.x,
+      crop.y,
+      crop.w,
+      crop.h
+    )
+    args = { "pdftoppm", "-f", tostring(page), "-l", tostring(page), "-r", tostring(crop.dpi) }
+    vim.list_extend(args, { "-x", tostring(crop.x), "-y", tostring(crop.y), "-W", tostring(crop.w), "-H", tostring(crop.h) })
+  end
   if vim.fn.filereadable(prefix .. ".png") == 1 then
+    if not crop then
+      local now = os.time()
+      vim.uv.fs_utime(prefix .. ".png", now, now)
+    end
     return cb and cb(prefix .. ".png")
   end
-  vim.fn.mkdir(cache .. "/pages", "p")
+  vim.fn.mkdir(vim.fn.fnamemodify(prefix, ":h"), "p")
+  vim.list_extend(args, { "-png", "-singlefile", pdf, prefix })
   vim.system(
-    { "pdftoppm", "-f", tostring(page), "-l", tostring(page), "-r", tostring(DPI), "-png", "-singlefile", pdf, prefix },
+    args,
     {},
     vim.schedule_wrap(function(r)
       if r.code ~= 0 then
@@ -170,12 +199,34 @@ local function title()
     return
   end
   local name = vim.fn.fnamemodify(S.pdf, ":t")
-  vim.wo[S.pdf_win].winbar = ("%%#Title# %s %%* page %d / %d  %%#Comment#(%s · ]p [p gp t r q)%%*"):format(
+  local zoom = S.zoom > 1 and ("  zoom %d%%%%"):format(math.floor(S.zoom * 100 + 0.5)) or ""
+  vim.wo[S.pdf_win].winbar = ("%%#Title# %s %%* page %d / %d%s  %%#Comment#(%s · ]p [p gp t r q  +/-/0 zoom  hjkl pan)%%*"):format(
     name,
     S.page,
     S.pages,
+    zoom,
     S.mode
   )
+end
+
+--- Size of the visible part of the page, as fractions of page width / height.
+local function viewport()
+  local vw = 1 / S.zoom
+  local cw, ch = 1, 2 -- fallback cell aspect
+  pcall(function()
+    local t = Snacks.image.terminal.size()
+    cw, ch = t.cell_width, t.cell_height
+  end)
+  local win_w = vim.api.nvim_win_get_width(S.pdf_win) * cw
+  local win_h = vim.api.nvim_win_get_height(S.pdf_win) * ch
+  local vh = vw * (win_h / win_w) * (S.pw / S.ph)
+  return vw, math.min(1, vh)
+end
+
+local function clamp_pan()
+  local vw, vh = viewport()
+  S.x = math.max(0, math.min(1 - vw, S.x))
+  S.y = math.max(0, math.min(1 - vh, S.y))
 end
 
 local function show()
@@ -196,14 +247,30 @@ local function show()
     return
   end
   local page = S.page
+  local crop
+  if S.zoom > 1 then
+    clamp_pan()
+    local vw, vh = viewport()
+    local dpi = math.floor(DPI * S.zoom + 0.5)
+    local pw, ph = S.pw / 72 * dpi, S.ph / 72 * dpi
+    crop = {
+      dpi = dpi,
+      x = math.floor(S.x * pw),
+      y = math.floor(S.y * ph),
+      w = math.floor(vw * pw),
+      h = math.floor(vh * ph),
+    }
+  end
+  local key = vim.inspect(crop)
+  S.view = key
   render(S.pdf, page, function(png)
-    if not S or S.page ~= page or S.mode ~= "image" or not vim.api.nvim_buf_is_valid(buf) then
+    if not S or S.page ~= page or S.view ~= key or S.mode ~= "image" or not vim.api.nvim_buf_is_valid(buf) then
       return
     end
     vim.bo[buf].modifiable = true
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
     Snacks.image.buf.attach(buf, { src = png })
-  end)
+  end, crop)
   -- Prefetch the neighbours so turning pages is instant.
   for _, p in ipairs({ page + 1, page - 1 }) do
     if p >= 1 and p <= S.pages then
@@ -218,7 +285,11 @@ local function go(page)
   if not S then
     return notify("No PDF open — use :ReadingPdf", vim.log.levels.WARN)
   end
-  S.page = math.max(1, math.min(S.pages, page))
+  local new = math.max(1, math.min(S.pages, page))
+  if new ~= S.page then
+    S.y = 0
+  end
+  S.page = new
   show()
 end
 
@@ -287,6 +358,58 @@ local function jump_to_ref()
   end
 end
 
+-- ── Cache cleanup ───────────────────────────────────────────────────────
+
+--- Deletes this PDF's zoomed views (cheap to re-render, rarely reused).
+local function drop_zoom(pdf)
+  local name = vim.fn.fnamemodify(pdf, ":t:r")
+  for _, f in ipairs(vim.fn.glob(cache .. "/zoom/" .. name .. "-p*.png", false, true)) do
+    vim.uv.fs_unlink(f)
+  end
+end
+
+--- Drops page renders older than PAGE_MAX_AGE_DAYS, then the least recently
+--- viewed ones until pages/ fits PAGE_CACHE_MAX_MB. Also clears zoomed views
+--- left behind by crashed / killed sessions (older than a day).
+local function prune()
+  local now = os.time()
+  local function scan(dir)
+    local out = {}
+    for _, f in ipairs(vim.fn.glob(dir .. "/*.png", false, true)) do
+      local st = vim.uv.fs_stat(f)
+      if st then
+        out[#out + 1] = { path = f, mtime = st.mtime.sec, size = st.size }
+      end
+    end
+    return out
+  end
+  for _, f in ipairs(scan(cache .. "/zoom")) do
+    if now - f.mtime > 86400 then
+      vim.uv.fs_unlink(f.path)
+    end
+  end
+  local keep, total = {}, 0
+  for _, f in ipairs(scan(cache .. "/pages")) do
+    if now - f.mtime > PAGE_MAX_AGE_DAYS * 86400 then
+      vim.uv.fs_unlink(f.path)
+    else
+      keep[#keep + 1] = f
+      total = total + f.size
+    end
+  end
+  table.sort(keep, function(a, b)
+    return a.mtime < b.mtime
+  end)
+  local cap = PAGE_CACHE_MAX_MB * 1024 * 1024
+  for _, f in ipairs(keep) do
+    if total <= cap then
+      break
+    end
+    vim.uv.fs_unlink(f.path)
+    total = total - f.size
+  end
+end
+
 function M.close()
   if not S then
     return
@@ -298,10 +421,11 @@ function M.close()
     vim.api.nvim_buf_delete(S.pdf_buf, { force = true })
   end
   if vim.api.nvim_buf_is_valid(S.note_buf) then
-    for _, lhs in ipairs({ ",r", ",g", ",n", ",p" }) do
+    for _, lhs in ipairs({ ",r", ",g", ",n", ",p", "<C-j>", "<C-k>" }) do
       pcall(vim.keymap.del, "n", lhs, { buffer = S.note_buf })
     end
   end
+  drop_zoom(S.pdf)
   S = nil
 end
 
@@ -312,6 +436,7 @@ local function open_pane(pdf, note_buf)
     return notify("Can't read " .. pdf, vim.log.levels.ERROR)
   end
   M.close()
+  vim.schedule(prune)
 
   local buf = vim.api.nvim_create_buf(false, true)
   vim.bo[buf].bufhidden = "wipe"
@@ -324,7 +449,21 @@ local function open_pane(pdf, note_buf)
     vim.wo[win][opt] = v
   end
 
-  S = { pdf = pdf, pages = pages, page = 1, mode = "image", note_buf = note_buf, pdf_buf = buf, pdf_win = win }
+  local pw, ph = (info.stdout or ""):match("Page size:%s+([%d.]+) x ([%d.]+)")
+  S = {
+    pdf = pdf,
+    pages = pages,
+    page = 1,
+    mode = "image",
+    note_buf = note_buf,
+    pdf_buf = buf,
+    pdf_win = win,
+    zoom = 1,
+    x = 0,
+    y = 0,
+    pw = tonumber(pw) or 612,
+    ph = tonumber(ph) or 792,
+  }
 
   local function map(mode, lhs, fn, desc, b)
     vim.keymap.set(mode, lhs, fn, { buffer = b or buf, nowait = true, desc = "PDF: " .. desc })
@@ -333,6 +472,11 @@ local function open_pane(pdf, note_buf)
   map("n", "[p", function() go(S.page - 1) end, "previous page")
   map("n", "<PageDown>", function() go(S.page + 1) end, "next page")
   map("n", "<PageUp>", function() go(S.page - 1) end, "previous page")
+  -- <C-j>/<C-k> turn pages from either pane (overrides window-nav there).
+  for _, b in ipairs({ buf, note_buf }) do
+    map("n", "<C-j>", function() go(S.page + 1) end, "next page", b)
+    map("n", "<C-k>", function() go(S.page - 1) end, "previous page", b)
+  end
   map("n", "gp", function()
     vim.ui.input({ prompt = ("Page (1–%d): "):format(S.pages) }, function(v)
       if tonumber(v) then
@@ -340,6 +484,33 @@ local function open_pane(pdf, note_buf)
       end
     end)
   end, "go to page")
+  -- Zoom: + / = in, - out, 0 reset. hjkl pan while zoomed (move the cursor in text mode).
+  local function zoom(z)
+    if S.mode ~= "image" then
+      return
+    end
+    local vw, vh = viewport()
+    local cx, cy = S.x + vw / 2, S.y + vh / 2 -- keep the centre fixed
+    S.zoom = math.max(1, math.min(6, z))
+    vw, vh = viewport()
+    S.x, S.y = cx - vw / 2, cy - vh / 2
+    show()
+  end
+  map("n", "+", function() zoom(S.zoom * 1.5) end, "zoom in")
+  map("n", "=", function() zoom(S.zoom * 1.5) end, "zoom in")
+  map("n", "-", function() zoom(S.zoom / 1.5) end, "zoom out")
+  map("n", "0", function() zoom(1) end, "reset zoom")
+  for key, d in pairs({ h = { -1, 0 }, l = { 1, 0 }, k = { 0, -1 }, j = { 0, 1 } }) do
+    map("n", key, function()
+      if S.mode ~= "image" or S.zoom <= 1 then
+        return vim.cmd("normal! " .. vim.v.count1 .. key)
+      end
+      local vw, vh = viewport()
+      S.x = S.x + d[1] * vw / 3 * vim.v.count1
+      S.y = S.y + d[2] * vh / 3 * vim.v.count1
+      show()
+    end, "pan " .. key)
+  end
   map("n", "t", function()
     S.mode = S.mode == "image" and "text" or "image"
     show()
@@ -365,6 +536,11 @@ local function open_pane(pdf, note_buf)
     end,
   })
   show()
+  -- Start in the note so you can write right away.
+  local nw = note_win()
+  if nw then
+    vim.api.nvim_set_current_win(nw)
+  end
 end
 
 --- Open the PDF for the current note (or `src`: path or URL).
@@ -380,6 +556,13 @@ function M.open(src)
 end
 
 function M.setup()
+  vim.api.nvim_create_autocmd("VimLeavePre", {
+    callback = function()
+      if S then
+        drop_zoom(S.pdf)
+      end
+    end,
+  })
   vim.api.nvim_create_user_command("ReadingPdf", function(o)
     M.open(o.args ~= "" and o.args or nil)
   end, { nargs = "?", complete = "file", desc = "Open the note's PDF beside it (frontmatter pdf:/url:)" })
