@@ -31,18 +31,53 @@ vim.keymap.set("t", "jk", "<C-\\><C-N>", { desc = "exit insert mode" })
 -- <M-h> / <M-j> / <M-k> / <M-l> send the arrow keys left / down / up / right.
 -- Buffer-local, set on TermEnter so it overrides snacks' <C-j>/<C-k> window-nav maps
 -- (up/down nav is useless in the vertical Claude split; <C-h>/<C-l> nav still works).
+-- A terminal counts as a Claude terminal if its buffer name says so, or if a
+-- `claude` process runs anywhere below its job (e.g. started from a bash buffer).
+local function runs_claude(buf)
+  if vim.api.nvim_buf_get_name(buf):lower():find("claude", 1, true) then
+    return true
+  end
+  local job = vim.b[buf].terminal_job_id
+  local ok, root = pcall(vim.fn.jobpid, job)
+  if not job or not ok then
+    return false
+  end
+  local function walk(pid)
+    local proc = vim.api.nvim_get_proc(pid)
+    if proc and proc.name:lower():find("claude", 1, true) then
+      return true
+    end
+    for _, child in ipairs(vim.api.nvim_get_proc_children(pid)) do
+      if walk(child) then
+        return true
+      end
+    end
+    return false
+  end
+  return walk(root)
+end
+
+local claude_keys = {
+  { "<C-k>", "<PageUp>", "Claude: scroll up" },
+  { "<C-j>", "<PageDown>", "Claude: scroll down" },
+  { "<M-h>", "<Left>", "Claude: cursor left" },
+  { "<M-l>", "<Right>", "Claude: cursor right" },
+  { "<M-j>", "<Down>", "Claude: arrow down" },
+  { "<M-k>", "<Up>", "Claude: arrow up" },
+}
+
 vim.api.nvim_create_autocmd("TermEnter", {
   group = vim.api.nvim_create_augroup("claude_scroll_keys", { clear = true }),
   callback = function(ev)
-    if not vim.api.nvim_buf_get_name(ev.buf):lower():find("claude", 1, true) then
-      return
+    local active = runs_claude(ev.buf)
+    for _, key in ipairs(claude_keys) do
+      if active then
+        vim.keymap.set("t", key[1], key[2], { buffer = ev.buf, desc = key[3] })
+      else
+        -- Claude exited: give the keys back to the shell / window navigation.
+        pcall(vim.keymap.del, "t", key[1], { buffer = ev.buf })
+      end
     end
-    vim.keymap.set("t", "<C-k>", "<PageUp>", { buffer = ev.buf, desc = "Claude: scroll up" })
-    vim.keymap.set("t", "<C-j>", "<PageDown>", { buffer = ev.buf, desc = "Claude: scroll down" })
-    vim.keymap.set("t", "<M-h>", "<Left>", { buffer = ev.buf, desc = "Claude: cursor left" })
-    vim.keymap.set("t", "<M-l>", "<Right>", { buffer = ev.buf, desc = "Claude: cursor right" })
-    vim.keymap.set("t", "<M-j>", "<Down>", { buffer = ev.buf, desc = "Claude: arrow down" })
-    vim.keymap.set("t", "<M-k>", "<Up>", { buffer = ev.buf, desc = "Claude: arrow up" })
   end,
 })
 
