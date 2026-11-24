@@ -146,8 +146,17 @@ end
 
 -- ── Rendering ────────────────────────────────────────────────────────────
 
+-- Render file names carry a revision tag for PDFs that get rebuilt (typst
+-- preview): snacks.image caches images by path, so a re-render of a changed
+-- PDF needs a new file name to show up.
+local revs = {} ---@type table<string, string>
+
+local function stem(pdf)
+  return vim.fn.fnamemodify(pdf, ":t:r") .. (revs[pdf] and ("-r" .. revs[pdf]) or "")
+end
+
 local function page_png(pdf, page)
-  return ("%s/%s-p%d-%d"):format(cache .. "/pages", vim.fn.fnamemodify(pdf, ":t:r"), page, DPI)
+  return ("%s/%s-p%d-%d"):format(cache .. "/pages", stem(pdf), page, DPI)
 end
 
 --- `crop` (optional) = { dpi, x, y, w, h } in pixels at that dpi: renders only
@@ -158,7 +167,7 @@ local function render(pdf, page, cb, crop)
   if crop then
     prefix = ("%s/zoom/%s-p%d-%d-%d-%d-%d-%d"):format(
       cache,
-      vim.fn.fnamemodify(pdf, ":t:r"),
+      stem(pdf),
       page,
       crop.dpi,
       crop.x,
@@ -320,7 +329,7 @@ local function show()
     if not pad_w then
       return attach(png)
     end
-    local out = ("%s/zoom/%s-p%d-c%d.png"):format(cache, vim.fn.fnamemodify(S.pdf, ":t:r"), page, pad_w)
+    local out = ("%s/zoom/%s-p%d-c%d.png"):format(cache, stem(S.pdf), page, pad_w)
     if vim.fn.filereadable(out) == 1 then
       return attach(out)
     end
@@ -502,12 +511,56 @@ function M.close()
     end
   end
   drop_zoom(S.pdf)
+  local on_close = S.on_close
   S = nil
+  if on_close then
+    on_close()
+  end
 end
 
-local function open_pane(pdf, note_buf)
+local function pdf_info(pdf)
   local info = vim.system({ "pdfinfo", pdf }):wait()
   local pages = tonumber((info.stdout or ""):match("Pages:%s+(%d+)"))
+  local pw, ph = (info.stdout or ""):match("Page size:%s+([%d.]+) x ([%d.]+)")
+  return pages, tonumber(pw) or 612, tonumber(ph) or 792
+end
+
+--- Deletes all renders of `pdf` (every revision) except the current one.
+local function drop_old_revs(pdf)
+  local name, cur = vim.fn.fnamemodify(pdf, ":t:r"), stem(pdf)
+  for _, dir in ipairs({ "/pages/", "/zoom/" }) do
+    for _, f in ipairs(vim.fn.glob(cache .. dir .. name .. "-*.png", false, true)) do
+      local base = vim.fn.fnamemodify(f, ":t")
+      if base:sub(1, #cur + 2) ~= cur .. "-p" then
+        vim.uv.fs_unlink(f)
+      end
+    end
+  end
+end
+
+--- Re-render after the open PDF changed on disk, keeping page, zoom and pan.
+--- Returns false if the PDF can't be read yet (half-written): call again later.
+function M.reload(pdf)
+  if not S or S.pdf ~= pdf then
+    return true
+  end
+  local pages, pw, ph = pdf_info(pdf)
+  if not pages then
+    return false
+  end
+  local st = vim.uv.fs_stat(pdf)
+  revs[pdf] = st and (st.mtime.sec .. "." .. st.mtime.nsec) or tostring(vim.uv.hrtime())
+  drop_old_revs(pdf)
+  S.pages, S.pw, S.ph = pages, pw, ph
+  S.page = math.min(S.page, pages)
+  S.fit_page = nil
+  show()
+  return true
+end
+
+local function open_pane(pdf, note_buf, opts)
+  opts = opts or {}
+  local pages, pw, ph = pdf_info(pdf)
   if not pages then
     return notify("Can't read " .. pdf, vim.log.levels.ERROR)
   end
@@ -525,7 +578,6 @@ local function open_pane(pdf, note_buf)
     vim.wo[win][opt] = v
   end
 
-  local pw, ph = (info.stdout or ""):match("Page size:%s+([%d.]+) x ([%d.]+)")
   S = {
     pdf = pdf,
     pages = pages,
@@ -539,8 +591,9 @@ local function open_pane(pdf, note_buf)
     centre = false,
     x = 0,
     y = 0,
-    pw = tonumber(pw) or 612,
-    ph = tonumber(ph) or 792,
+    pw = pw,
+    ph = ph,
+    on_close = opts.on_close,
   }
 
   local function map(mode, lhs, fn, desc, b)
@@ -615,14 +668,16 @@ local function open_pane(pdf, note_buf)
     S.mode = S.mode == "image" and "text" or "image"
     show()
   end, "toggle image / text")
-  map("n", "r", remark, "remark at this page")
-  map("x", "Q", quote, "quote selection into note")
   map("n", "q", M.close, "close")
-
-  map("n", ",r", remark, "remark at current page", note_buf)
-  map("n", ",g", jump_to_ref, "jump to p.N under cursor", note_buf)
   map("n", ",n", function() go(S.page + 1) end, "next page", note_buf)
   map("n", ",p", function() go(S.page - 1) end, "previous page", note_buf)
+  -- Note-taking keys only when reading a paper, not for a source preview.
+  if not opts.preview then
+    map("n", "r", remark, "remark at this page")
+    map("x", "Q", quote, "quote selection into note")
+    map("n", ",r", remark, "remark at current page", note_buf)
+    map("n", ",g", jump_to_ref, "jump to p.N under cursor", note_buf)
+  end
 
   vim.api.nvim_create_autocmd("BufWipeout", {
     buffer = buf,
@@ -641,6 +696,20 @@ local function open_pane(pdf, note_buf)
   if nw then
     vim.api.nvim_set_current_win(nw)
   end
+end
+
+--- Open a local PDF beside the current buffer as a live preview of it (no
+--- note-taking keys). `on_close` runs when the pane closes.
+function M.preview(pdf, on_close)
+  local st = vim.uv.fs_stat(pdf)
+  revs[pdf] = st and (st.mtime.sec .. "." .. st.mtime.nsec) or nil
+  drop_old_revs(pdf)
+  open_pane(pdf, vim.api.nvim_get_current_buf(), { preview = true, on_close = on_close })
+end
+
+--- Is a PDF pane open, and for which PDF?
+function M.current()
+  return S and S.pdf
 end
 
 --- Open the PDF for the current note (or `src`: path or URL).

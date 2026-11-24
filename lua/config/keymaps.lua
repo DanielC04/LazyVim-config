@@ -121,6 +121,7 @@ vim.cmd("abb odef >[!Definition] <CR>>")
 require("config.anki").setup()
 -- Reading notes -> dcermann.de: :ReadingSync[!], :ReadingImport, :ReadingLint, <leader>oP
 require("config.reading").setup()
+require("config.typst_preview").setup()
 
 -- disable mouse
 vim.cmd("set mouse=")
