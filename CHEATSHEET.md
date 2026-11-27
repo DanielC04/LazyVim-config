@@ -155,7 +155,8 @@ After opening, the cursor lands in the note so you can start writing. Inside a P
 
 | Where | Key / command | Does |
 |---|---|---|
-| Note | `<leader>op` / `:ReadingPdf [path\|url]` | Open the note's PDF (or the given path/URL) beside it |
+| Note | `<leader>op` / `:ReadingPdf [path\|url]` | Open the note's PDF (or the given path/URL) beside it; LessWrong/AF posts are rendered to PDF (weasyprint) |
+| Note | `:ReadingPdf!` | Re-download / re-render the note's PDF, ignoring the cache |
 | PDF pane | `]p` `[p` / `<PageDown>` `<PageUp>` / `<C-j>` `<C-k>` | Next / previous page |
 | PDF pane | `+` (or `=`) / `-` / `0` | Zoom in (1.5× per press, max 6×) / out / back to full page |
 | PDF pane | `w` | Fit text width: zoom so the text column(s) fill the pane, margins cropped; stays on for later pages until `+`/`-`/`0` (use `j`/`k` to scroll) |

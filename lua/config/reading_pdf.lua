@@ -73,7 +73,17 @@ local function arxiv_id(url)
   return id and id:gsub("%.pdf$", ""):gsub("/$", "")
 end
 
---- Returns { path = local file } or { url = …, name = cache file name }, or nil + reason.
+--- LessWrong / Alignment Forum post URL → host, post id.
+local function lw_post(url)
+  for _, host in ipairs({ "www.lesswrong.com", "lesswrong.com", "www.alignmentforum.org", "alignmentforum.org" }) do
+    local id = url:match("^https?://" .. host:gsub("%.", "%%.") .. "/posts/(%w+)")
+    if id then
+      return host:gsub("^www%.", ""), id
+    end
+  end
+end
+
+--- Returns { path = local file } or { url = …, name = cache file name [, lw = …] }, or nil + reason.
 local function resolve(src, note_buf)
   if not src or src == "" then
     local fm = frontmatter(note_buf)
@@ -94,6 +104,10 @@ local function resolve(src, note_buf)
     end
     return nil, "file not found: " .. src
   end
+  local host, post_id = lw_post(src)
+  if host then
+    return { url = src, name = "lw-" .. post_id .. ".pdf", lw = { host = host, id = post_id } }
+  end
   local id = arxiv_id(src)
   if id then
     return { url = "https://arxiv.org/pdf/" .. id, name = "arxiv-" .. id:gsub("/", "_") .. ".pdf" }
@@ -112,14 +126,102 @@ local function is_pdf(path)
   return head == "%PDF-"
 end
 
-local function fetch(target, cb)
+local function html_escape(s)
+  return (tostring(s or ""):gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"):gsub('"', "&quot;"))
+end
+
+-- LessWrong/AF pages are built by JavaScript, so a plain download is nearly
+-- empty. Fetch the post body from the forum's GraphQL API instead, wrap it in
+-- a print stylesheet and render it to PDF with weasyprint (`uv tool install
+-- weasyprint`). Page breaks are weasyprint's, so `p.N` refs hold for this
+-- render; `:ReadingPdf!` re-renders.
+local PRINT_CSS = [[
+@page { size: A4; margin: 2cm 2.2cm; @bottom-center { content: counter(page); font-size: 9pt; color: #888; } }
+body { font-family: "Source Serif 4", "Noto Serif", Georgia, serif; font-size: 11pt; line-height: 1.5; color: #111; }
+h1.title { font-size: 20pt; line-height: 1.2; margin: 0 0 .3em; }
+.meta { color: #555; font-size: 10pt; margin-bottom: 1.5em; border-bottom: 1px solid #ccc; padding-bottom: .8em; }
+h1, h2, h3, h4 { line-height: 1.25; page-break-after: avoid; }
+h1:not(.title) { font-size: 15pt; } h2 { font-size: 13pt; } h3 { font-size: 11.5pt; }
+img { max-width: 100%; height: auto; }
+figure { margin: 1em 0; page-break-inside: avoid; } figcaption { font-size: 9pt; color: #555; }
+pre, code { font-family: "JetBrains Mono", monospace; font-size: 9pt; }
+pre { white-space: pre-wrap; background: #f5f5f5; padding: .6em; }
+blockquote { border-left: 3px solid #ccc; margin-left: 0; padding-left: 1em; color: #444; }
+table { border-collapse: collapse; font-size: 9.5pt; } td, th { border: 1px solid #ccc; padding: .25em .5em; }
+a { color: #1a5fb4; text-decoration: none; }
+.footnotes, .footnote-content { font-size: 9.5pt; }
+]]
+
+local function lw_render(target, out, cb)
+  local weasy = vim.fn.exepath("weasyprint")
+  if weasy == "" then
+    weasy = vim.fn.expand("~/.local/bin/weasyprint")
+    if vim.fn.executable(weasy) == 0 then
+      return notify("weasyprint not found (install: uv tool install weasyprint)", vim.log.levels.ERROR)
+    end
+  end
+  local query = ('{ post(input:{selector:{_id:"%s"}}){ result { title postedAt pageUrl '
+    .. "user{displayName} coauthors{displayName} contents{html} } } }"):format(target.lw.id)
+  notify("Fetching post from " .. target.lw.host)
+  vim.system(
+    { "curl", "-fsS", "--max-time", "60", "-A", UA, "-H", "Content-Type: application/json",
+      "-d", vim.json.encode({ query = query }), "https://www." .. target.lw.host .. "/graphql" },
+    { text = true },
+    vim.schedule_wrap(function(r)
+      if r.code ~= 0 then
+        return notify("Post fetch failed (" .. (r.stderr or ""):gsub("%s+$", "") .. ")", vim.log.levels.ERROR)
+      end
+      local ok, data = pcall(vim.json.decode, r.stdout)
+      local post = ok and vim.tbl_get(data, "data", "post", "result")
+      local body = post and vim.tbl_get(post, "contents", "html")
+      if not body or body == vim.NIL then
+        return notify("Post has no content (wrong id or API change?)", vim.log.levels.ERROR)
+      end
+      local authors = { post.user and post.user.displayName }
+      for _, c in ipairs(post.coauthors ~= vim.NIL and post.coauthors or {}) do
+        table.insert(authors, c.displayName)
+      end
+      local html = table.concat({
+        '<!doctype html><html><head><meta charset="utf-8"><title>', html_escape(post.title), "</title>",
+        "<style>", PRINT_CSS, "</style></head><body>",
+        '<h1 class="title">', html_escape(post.title), "</h1>",
+        '<div class="meta">', html_escape(table.concat(authors, ", ")), " · ",
+        html_escape((post.postedAt or ""):sub(1, 10)), " · ", html_escape(target.lw.host), "<br>",
+        '<a href="', html_escape(post.pageUrl or target.url), '">', html_escape(post.pageUrl or target.url), "</a></div>",
+        body, "</body></html>",
+      })
+      local src = out:gsub("%.pdf$", ".html")
+      local f = assert(io.open(src, "w"))
+      f:write(html)
+      f:close()
+      notify("Rendering PDF")
+      local tmp = out .. ".part"
+      vim.system({ weasy, "-q", "-u", target.url, src, tmp }, { text = true }, vim.schedule_wrap(function(w)
+        if w.code ~= 0 or not is_pdf(tmp) then
+          os.remove(tmp)
+          return notify("weasyprint failed: " .. (w.stderr or ""):gsub("%s+$", ""):sub(-300), vim.log.levels.ERROR)
+        end
+        os.rename(tmp, out)
+        cb(out)
+      end))
+    end)
+  )
+end
+
+local function fetch(target, cb, force)
   if target.path then
     return cb(target.path)
   end
   vim.fn.mkdir(cache, "p")
   local out = cache .. "/" .. target.name
+  if force then
+    os.remove(out)
+  end
   if vim.fn.filereadable(out) == 1 and is_pdf(out) then
     return cb(out)
+  end
+  if target.lw then
+    return lw_render(target, out, cb)
   end
   notify("Downloading " .. target.url)
   local tmp = out .. ".part"
@@ -713,15 +815,19 @@ function M.current()
 end
 
 --- Open the PDF for the current note (or `src`: path or URL).
-function M.open(src)
+--- `force` re-downloads / re-renders instead of using the cached PDF.
+function M.open(src, force)
   local note_buf = S and vim.api.nvim_get_current_buf() == S.pdf_buf and S.note_buf or vim.api.nvim_get_current_buf()
   local target, err = resolve(src, note_buf)
   if not target then
     return notify(err, vim.log.levels.WARN)
   end
+  if force and S and S.pdf == cache .. "/" .. (target.name or "") then
+    M.close()
+  end
   fetch(target, function(pdf)
     open_pane(pdf, note_buf)
-  end)
+  end, force)
 end
 
 function M.setup()
@@ -733,8 +839,8 @@ function M.setup()
     end,
   })
   vim.api.nvim_create_user_command("ReadingPdf", function(o)
-    M.open(o.args ~= "" and o.args or nil)
-  end, { nargs = "?", complete = "file", desc = "Open the note's PDF beside it (frontmatter pdf:/url:)" })
+    M.open(o.args ~= "" and o.args or nil, o.bang)
+  end, { nargs = "?", bang = true, complete = "file", desc = "Open the note's PDF beside it (frontmatter pdf:/url:); ! re-fetches" })
   vim.keymap.set("n", "<leader>op", "<cmd>ReadingPdf<cr>", { desc = "Reading: open PDF beside note" })
 end
 
