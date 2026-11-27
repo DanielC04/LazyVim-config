@@ -198,6 +198,8 @@ Watch out: `yy` in insert mode means you can't type "yy".
 | `<C-Up>` | Grow window (normal + terminal) |
 | `<leader>spe` / `spd` / `sps` | Spell language English / German / Spanish (spell is off by default) |
 | `<leader>sv` | Source current lua file |
+| `<leader>sg` | Telescope live grep in project root (vault when in a note). `<C-q>` → quickfix. `plugins/telescope-grep.lua` |
+| `<leader>sw` | Telescope grep word under cursor (visual: selection) in project root. `plugins/telescope-grep.lua` |
 | `<leader>kk` | Toggle terminal (`kkh` horizontal, `kkv` vertical, `kkt` tab, `kkf` float) |
 
 Mouse is disabled (`set mouse=`).
